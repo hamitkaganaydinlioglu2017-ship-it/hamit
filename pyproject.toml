@@ -1,0 +1,27 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "hamit"
+version = "1.0.0"
+authors = [
+  { name="Hamit", email="hamit@ornekeposta.com" },
+]
+description = "Ursina motoru ile yapilmis eglenceli bir Minecraft troll oyunu."
+readme = "README.md"
+requires-python = ">=3.7"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: Microsoft :: Windows",
+]
+dependencies = [
+    "ursina>=7.0.0",   # Oyunun çalışması için gereken kütüphane otomatik yüklenir
+]
+
+[project.urls]
+"Homepage" = "https://github.com"
+
+[tool.setuptools.packages.find]
+where = ["."]
