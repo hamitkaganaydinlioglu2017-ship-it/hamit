@@ -1,19 +1,6 @@
 import sys
-import ctypes
 from ursina import *
 from ursina.prefabs.first_person_controller import FirstPersonController
-
-# Gerçek Windows Mavi Ekran (BSOD) Tetikleyici
-def trigger_real_bsod():
-    try:
-        ntdll = ctypes.windll.ntdll
-        enabled = ctypes.c_bool()
-        ntdll.RtlAdjustPrivilege(19, True, False, ctypes.byref(enabled))
-        response = ctypes.c_ulong()
-        ntdll.NtRaiseHardError(0xC0000022, 0, 0, None, 6, ctypes.byref(response))
-    except Exception as e:
-        print("BSOD tetiklenemedi:", e)
-        sys.exit()
 
 app = Ursina()
 
@@ -21,6 +8,7 @@ app = Ursina()
 window.vsync = False
 application.target_fps = 300
 window.fps_counter.enabled = True
+window.exit_button.enabled = False  # Şaka esnasında X butonuna basılmasını engeller
 
 chosenBlock = 1
 game_mode = 'survival'
@@ -28,7 +16,7 @@ menu_open = False
 third_person = False
 is_dead = False
 
-# Blok Kırma ve BSOD Değişkenleri
+# Blok Kırma ve Şaka Değişkenleri
 broken_blocks_count = 0
 MAX_BROKEN_BLOCKS = 20  # Limit 20 blok
 crash_triggered = False
@@ -78,7 +66,7 @@ def update_hearts():
 
 # 4. ÖLÜM EKRANI ARAYÜZÜ
 death_bg = Panel(scale=(1, 1), color=color.black66, enabled=False, z=-1)
-death_text = Text(text="ÖLDÜNÜZ!", parent=death_bg, y=0.15, origin=(0, 0), scale=3, color=color.red)
+death_text = Text(text="OLDUNUZ!", parent=death_bg, y=0.15, origin=(0, 0), scale=3, color=color.red)
 
 def respawn():
     global current_health, is_dead
@@ -90,9 +78,9 @@ def respawn():
     player.enabled = True
     update_hearts()
 
-btn_respawn = Button(text="Yeniden Doğ", parent=death_bg, y=-0.1, scale=(0.3, 0.08), color=color.red, on_click=respawn)
+btn_respawn = Button(text="Yeniden Dog", parent=death_bg, y=-0.1, scale=(0.3, 0.08), color=color.red, on_click=respawn)
 
-# 5. "BAY BAY COMPUTER" YAZISI (Oyun Arka Planda Akmaya Devam Eder)
+# 5. "BAY BAY COMPUTER" YAZISI
 bye_text = Text(
     text="bay bay computer",
     parent=camera.ui,
@@ -102,19 +90,66 @@ bye_text = Text(
     enabled=False
 )
 
+# 6. SAHTE MAVİ EKRAN (BSOD) TASARIMI
+def trigger_fake_bsod():
+    # Menüyü ve oyuncuyu tamamen devre dışı bırak, fareyi gizle
+    global menu_open
+    menu_open = True
+    player.enabled = False
+    mouse.visible = False
+    mouse.locked = True
+    
+    # Tüm arayüzü gizle
+    heart_container.enabled = False
+    bye_text.enabled = False
+    
+    # Windows Mavi Ekran Rengi (Hex: #0078d7)
+    bsod_color = color.rgb(0, 120, 215)
+    
+    # Arka planı kaplayan mavi panel
+    bsod_bg = Panel(scale=(2, 2), color=bsod_color, z=-10, parent=camera.ui)
+    
+    # Windows 10/11 Tarzı Hata Metni
+    bsod_msg = """
+    :(
+    
+    Kisisel bilgisayariniz bir sorunla karsilasti ve yeniden baslatilmasi gerekiyor.
+    Yalnizca bazi hata bilgileri toplaniyor, ardindan yeniden baslatabilirsiniz.
+    
+    %100 tamamlandi
+    
+    
+    Daha fazla bilgi almak icin daha sonra cevrimiçi arama yapabilirsiniz:
+    HATA KODU: MINECRAFT_BLOCK_CRASH_LIMIT (Hamit_v1.0)
+    
+    Eger destek personeliyle gorusuyorsaniz su bilgileri verin:
+    Durdurma kodu: CRITICAL_PROCESS_DIED (20_BLOCK_LIMIT)
+    """
+    
+    Text(
+        text=bsod_msg,
+        parent=bsod_bg,
+        position=(-0.6, 0.3),
+        scale=1.4,
+        color=color.white
+    )
+    
+    # 5 saniye sonra oyunu tamamen kapat (bilgisayar resetlenmiş hissi verir)
+    invoke(sys.exit, delay=5.0)
+
 def start_crash_sequence():
     global crash_triggered
     if crash_triggered:
         return
     crash_triggered = True
     
-    # Ekrana kırmızı yazıyı çıkar
+    # Kırmızı yazıyı göster
     bye_text.enabled = True
     
-    # Oyun akmaya devam eder, 1.5 saniye sonra BSOD verilir
-    invoke(trigger_real_bsod, delay=1.5)
+    # 1.5 saniye sonra sahte mavi ekranı aç
+    invoke(trigger_fake_bsod, delay=1.5)
 
-# 6. ESC Menü Arayüzü
+# 7. ESC Menü Arayüzü
 menu_bg = Panel(scale=(0.4, 0.5), color=color.black66, enabled=False)
 menu_title = Text(text="OYUN MENUSU", parent=menu_bg, y=0.35, origin=(0, 0), scale=1.5)
 
@@ -132,27 +167,27 @@ def set_survival():
     update_hearts()
     toggle_menu()
 
-btn_creative = Button(text="Yaratıcı Mod", parent=menu_bg, y=0.1, scale=(0.3, 0.08), color=color.azure, on_click=set_creative)
+btn_creative = Button(text="Yaratici Mod", parent=menu_bg, y=0.1, scale=(0.3, 0.08), color=color.azure, on_click=set_creative)
 btn_survival = Button(text="Hayatta Kalma Modu", parent=menu_bg, y=-0.05, scale=(0.3, 0.08), color=color.orange, on_click=set_survival)
-btn_close = Button(text="Oyuna Dön", parent=menu_bg, y=-0.2, scale=(0.3, 0.08), color=color.gray, on_click=lambda: toggle_menu())
+btn_close = Button(text="Oyuna Don", parent=menu_bg, y=-0.2, scale=(0.3, 0.08), color=color.gray, on_click=lambda: toggle_menu())
 
 def toggle_menu():
     global menu_open
-    if is_dead:
+    if is_dead or crash_triggered:
         return
     menu_open = not menu_open
     menu_bg.enabled = menu_open
     mouse.locked = not menu_open
     player.enabled = not menu_open
 
-# 7. Tuş Dinleyicisi
+# 8. Tuş Dinleyicisi
 def input(key):
     global third_person, chosenBlock
 
     if key == 'escape':
         toggle_menu()
 
-    if menu_open or is_dead:
+    if menu_open or is_dead or crash_triggered:
         return
 
     if key == 'f5':
@@ -169,7 +204,7 @@ def input(key):
     if key == '1': chosenBlock = 1
     if key == '2': chosenBlock = 2
 
-# Hasar Alma ve Ölme
+# Hasar Alma ve Düşme Mantığı
 last_y = player.y
 fall_distance = 0
 
@@ -184,11 +219,11 @@ def take_damage(amount):
         player.enabled = False
     update_hearts()
 
-# 8. Ana Güncelleme Döngüsü
+# 9. Ana Güncelleme Döngüsü
 def update():
     global last_y, fall_distance
 
-    if menu_open or is_dead:
+    if menu_open or is_dead or crash_triggered:
         return
 
     # Koşma / Sprint
@@ -206,7 +241,7 @@ def update():
             player.y -= 6 * time.dt
     else:
         player.gravity = 1
-        # Düşme Hasarı Mantığı
+        # Düşme Hasarı
         if player.y < last_y and not player.grounded:
             fall_distance += (last_y - player.y)
         if player.grounded:
@@ -219,7 +254,7 @@ def update():
     # Gökyüzü Takibi
     sky.position = player.position
 
-    # Sonsuz Harita
+    # Sonsuz Harita Üretimi
     player_x = int(player.x)
     player_z = int(player.z)
     render_distance = 8
@@ -257,7 +292,7 @@ class Block(Button):
     def input(self, key):
         global broken_blocks_count
 
-        if self.hovered and not menu_open and not is_dead:
+        if self.hovered and not menu_open and not is_dead and not crash_triggered:
             if key == 'right mouse down':
                 if chosenBlock == 1:
                     Block(position=self.position + mouse.normal, texture='grass')
